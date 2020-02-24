@@ -9,7 +9,7 @@ class ApplicationLoadbalancer:
     """
     Manager class which creates a loadbalancer and its listeners and security groups.
     """
-    def __int__(
+    def __init__(
             self,
             scope: core.Stack,
             prefix: str,
@@ -72,7 +72,7 @@ class ApplicationLoadbalancer:
 
         :return: Loadbalancer.
         """
-        return self.loadbalancer
+        return self.__loadbalancer
 
     @property
     def default_listeners(self) -> LoadBalancerListeners:
