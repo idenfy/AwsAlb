@@ -42,7 +42,7 @@ class LoadBalancerListeners:
         )
 
         self.__listener_http_1 = aws_elasticloadbalancingv2.CfnListener(
-            scope, prefix + 'FargateHttpListener1',
+            scope, prefix + 'HttpListener1',
             port=self.LISTENER_HTTP_PORT_1,
             protocol='HTTP',
             load_balancer_arn=application_loadbalancer.ref,
@@ -63,7 +63,7 @@ class LoadBalancerListeners:
 
         if certificate:
             self.__listener_https_1 = aws_elasticloadbalancingv2.CfnListener(
-                scope, prefix + 'FargateHttpsListener1',
+                scope, prefix + 'HttpsListener1',
                 certificates=[aws_elasticloadbalancingv2.CfnListener.CertificateProperty(
                     certificate_arn=certificate.ref
                 )],
@@ -74,7 +74,7 @@ class LoadBalancerListeners:
             )
 
         self.__listener_http_2 = aws_elasticloadbalancingv2.CfnListener(
-            scope, prefix + 'FargateHttpListener2',
+            scope, prefix + 'HttpListener2',
             port=self.LISTENER_HTTP_PORT_2,
             protocol='HTTP',
             load_balancer_arn=application_loadbalancer.ref,
@@ -95,7 +95,7 @@ class LoadBalancerListeners:
 
         if certificate:
             self.__listener_https_2 = aws_elasticloadbalancingv2.CfnListener(
-                scope, prefix + 'FargateHttpsListener2',
+                scope, prefix + 'HttpsListener2',
                 certificates=[aws_elasticloadbalancingv2.CfnListener.CertificateProperty(
                     certificate_arn=certificate.ref
                 )],
