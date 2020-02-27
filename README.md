@@ -58,7 +58,8 @@ instance in your stack. An example is given below:
 
 ```python
 from aws_cdk import core, aws_ec2
-from aws_alb.alb_traffic_enum import AlbTrafficEnum
+from aws_alb.params.listener_params import ListenerParams
+from aws_alb.params.target_group_params import TargetGroupParams
 from aws_alb.application_loadbalancer import ApplicationLoadbalancer
 
 class MainStack(core.Stack):
@@ -80,8 +81,21 @@ class MainStack(core.Stack):
             vpc=self.vpc,
             loadbalancer_subnets=self.vpc.public_subnets,
             security_groups=None,
-            inbound_traffic=AlbTrafficEnum.INTERNET,
-            outbound_traffic=AlbTrafficEnum.INTERNET,
-            certificate=None
         )
+        
+        # Now lets create listeners and target groups for blue green deployments.
+        blue, green = self.public_http_loadbalancer.listeners.create_blue_green(
+            listener_params=ListenerParams(
+                prefix='MyCool',
+                loadbalancer=self.public_http_loadbalancer.loadbalancer,
+            ),
+            target_group_params=TargetGroupParams(
+                prefix='MyCool',
+                vpc=self.vpc,
+            )
+        )
+        
+        # If you need, you can access created target groups and listeners.
+        blue_target_group, blue_listener = blue
+        green_target_group, green_listener = green
 ```
