@@ -1,8 +1,7 @@
-from abc import ABC
-from enum import auto
+from enum import auto, Enum
 
 
-class AlbTrafficEnum(ABC):
+class AlbTrafficEnum(Enum):
     """
     Enum class which tells what type of ingress and egress
     traffic should be applied to application loadbalancer.

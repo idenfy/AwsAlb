@@ -1,7 +1,8 @@
-from aws_cdk import aws_ec2
-from aws_cdk.aws_ec2 import SecurityGroup, IVpc, Peer
-from aws_cdk.core import Stack
+from typing import Optional
 from aws_alb.alb_traffic_enum import AlbTrafficEnum
+from aws_cdk.aws_ec2 import SecurityGroup, IVpc, IPeer, Peer
+from aws_cdk.core import Stack
+from aws_alb.loadbalancer_sg_modifier import SecurityGroupModifier
 
 
 class LoadBalancerSecurityGroup(SecurityGroup):
@@ -13,9 +14,6 @@ class LoadBalancerSecurityGroup(SecurityGroup):
             scope: Stack,
             prefix: str,
             vpc: IVpc,
-            https_enabled: bool,
-            inbound: AlbTrafficEnum,
-            outbound: AlbTrafficEnum
     ) -> None:
         """
         Constructor.
@@ -23,80 +21,45 @@ class LoadBalancerSecurityGroup(SecurityGroup):
         :param scope: A CloudFormation stack in which the resources should be added.
         :param prefix: A prefix for newly created resources.
         :param vpc: Virtual private cloud in which the security groups and a loadbalancer itself should be placed.
-        :param https_enabled: Boolean telling whether to enable https prots.
-        :param inbound: Inbound traffic peers for loadbalancer.
-        :param outbound: Outbound traffic peers for loadbalancer.
         """
         super().__init__(
             scope=scope,
-            id=prefix + 'LBSG',
+            id=prefix + 'LBSecurityGroup',
             vpc=vpc,
             allow_all_outbound=False,
             description=f'A {prefix} load balancer security group.',
             security_group_name=prefix + 'AppLoadBalancerSG'
         )
 
-        if inbound == AlbTrafficEnum.INTERNET:
-            in_cidr = Peer.any_ipv4()
-        elif inbound == AlbTrafficEnum.VPC:
-            in_cidr = Peer.ipv4(vpc.vpc_cidr_block)
+        self.__vpc = vpc
+        self.__security_group_modifier = SecurityGroupModifier(self)
+
+    def open_port(self, port: int, peer: Optional[IPeer] = None, ingress: bool = True) -> None:
+        """
+        Modifies a current security group by opening a specified port.
+
+        :param port: Port to open (allow traffic).
+        :param peer: Peer (a CIDR or another security group).
+        :param ingress: Specifies whether it is configured for ingress or egress traffic.
+
+        :return: No return.
+        """
+        if peer:
+            self.__security_group_modifier.open_port(port, peer, ingress)
+
+    def get_peer(self, traffic: AlbTrafficEnum) -> Optional[IPeer]:
+        """
+        Depending on enum creates a peer.
+
+        :param traffic: Configuration enum.
+
+        :return: Peer.
+        """
+        if traffic == AlbTrafficEnum.INTERNET:
+            cidr_peer = Peer.any_ipv4()
+        elif traffic == AlbTrafficEnum.VPC:
+            cidr_peer = Peer.ipv4(self.__vpc.vpc_cidr_block)
         else:
-            in_cidr = None
+            cidr_peer = None
 
-        if outbound == AlbTrafficEnum.INTERNET:
-            out_cidr = Peer.any_ipv4()
-        elif outbound == AlbTrafficEnum.VPC:
-            out_cidr = Peer.ipv4(vpc.vpc_cidr_block)
-        else:
-            out_cidr = None
-
-        if in_cidr:
-            self.add_ingress_rule(
-                peer=in_cidr,
-                connection=aws_ec2.Port(
-                    protocol=aws_ec2.Protocol.TCP,
-                    string_representation=prefix + 'LBSGIngress80',
-                    from_port=80,
-                    to_port=80
-                )
-            )
-
-            if https_enabled:
-                self.add_ingress_rule(
-                    peer=in_cidr,
-                    connection=aws_ec2.Port(
-                        protocol=aws_ec2.Protocol.TCP,
-                        string_representation=prefix + 'LBSGIngress443',
-                        from_port=443,
-                        to_port=443
-                    )
-                )
-
-        if out_cidr:
-            self.add_egress_rule(
-                peer=out_cidr,
-                connection=aws_ec2.Port(
-                    protocol=aws_ec2.Protocol.TCP,
-                    string_representation=prefix + 'LBSGEgress80',
-                    from_port=80,
-                    to_port=80
-                )
-            )
-
-            if https_enabled:
-                self.add_egress_rule(
-                    peer=out_cidr,
-                    connection=aws_ec2.Port(
-                        protocol=aws_ec2.Protocol.TCP,
-                        string_representation=prefix + 'LBSGEgress443',
-                        from_port=443,
-                        to_port=443
-                    )
-                )
-
-        def cant_access(**kwargs):
-            raise PermissionError('You can not access these methods.')
-
-        # Make sure ingress and egress rules are not modifiable.
-        self.add_egress_rule = cant_access
-        self.add_ingress_rule = cant_access
+        return cidr_peer

@@ -1,13 +1,12 @@
 from typing import List, Optional
-from aws_cdk import core, aws_elasticloadbalancingv2, aws_ec2, aws_certificatemanager
-from aws_alb.alb_traffic_enum import AlbTrafficEnum
+from aws_cdk import core, aws_elasticloadbalancingv2, aws_ec2
 from aws_alb.loadbalancer_listeners import LoadBalancerListeners
 from aws_alb.loadbalancer_sg import LoadBalancerSecurityGroup
 
 
 class ApplicationLoadbalancer:
     """
-    Manager class which creates a loadbalancer and its listeners and security groups.
+    Manager class which creates a loadbalancer and its listeners and security groups and target groups.
     """
     def __init__(
             self,
@@ -16,9 +15,6 @@ class ApplicationLoadbalancer:
             vpc: aws_ec2.Vpc,
             loadbalancer_subnets: List[aws_ec2.Subnet],
             security_groups: Optional[List[aws_ec2.ISecurityGroup]] = None,
-            inbound_traffic: Optional[AlbTrafficEnum] = None,
-            outbound_traffic: Optional[AlbTrafficEnum] = None,
-            certificate: Optional[aws_certificatemanager.CfnCertificate] = None
     ) -> None:
         """
         Constructor.
@@ -28,23 +24,15 @@ class ApplicationLoadbalancer:
         :param vpc: Virtual private cloud in which the security groups and a loadbalancer itself should be placed.
         :param loadbalancer_subnets: Subnets in which the loadbalancer can live.
         :param security_groups: Additional security groups for a loadbalancer.
-        :param inbound_traffic: Inbound traffic for a loadbalancer.
-        :param outbound_traffic: Outbound traffic for a loadbalancer.
-        :param certificate: To enable HTTPS on a loadbalancer, provide a certificate.
-
-        :return: No return.
         """
-        self.__loadbalancer_default_security_group = LoadBalancerSecurityGroup(
+        self.__loadbalancer_security_group = LoadBalancerSecurityGroup(
             scope=scope,
             prefix=prefix,
             vpc=vpc,
-            https_enabled=certificate is not None,
-            inbound=inbound_traffic or AlbTrafficEnum.INTERNET,
-            outbound=outbound_traffic or AlbTrafficEnum.INTERNET
         )
 
         security_groups = security_groups or []
-        security_groups.append(self.__loadbalancer_default_security_group)
+        security_groups.append(self.__loadbalancer_security_group)
 
         self.__loadbalancer = aws_elasticloadbalancingv2.CfnLoadBalancer(
             scope,
@@ -56,11 +44,11 @@ class ApplicationLoadbalancer:
             name=prefix + 'AppLoadBalancer'
         )
 
-        self.__loadbalancer_default_listeners = LoadBalancerListeners(
+        self.__loadbalancer_listeners = LoadBalancerListeners(
             scope=scope,
             prefix=prefix,
             application_loadbalancer=self.__loadbalancer,
-            certificate=certificate
+            loadbalancer_security_group=self.__loadbalancer_security_group,
         )
 
     @property
@@ -75,23 +63,23 @@ class ApplicationLoadbalancer:
         return self.__loadbalancer
 
     @property
-    def default_listeners(self) -> LoadBalancerListeners:
+    def listeners(self) -> LoadBalancerListeners:
         """
-        Default listeners of the loadbalancer.
+        Listeners of the loadbalancer.
         More about listeners:
         https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html
 
         :return: Listeners.
         """
-        return self.__loadbalancer_default_listeners
+        return self.__loadbalancer_listeners
 
     @property
-    def default_security_group(self) -> LoadBalancerSecurityGroup:
+    def security_group(self) -> LoadBalancerSecurityGroup:
         """
-        Default security groups of the loadbalancer.
+        Security groups of the loadbalancer.
         More about security groups:
         https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html
 
         :return: Security groups.
         """
-        return self.__loadbalancer_default_security_group
+        return self.__loadbalancer_security_group
