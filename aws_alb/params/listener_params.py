@@ -1,5 +1,4 @@
-from typing import Optional
-from aws_alb.application_loadbalancer import ApplicationLoadbalancer
+from typing import Optional, Any
 from aws_cdk.aws_certificatemanager import CfnCertificate
 from aws_cdk.aws_elasticloadbalancingv2 import CfnListener
 from aws_alb.alb_traffic_enum import AlbTrafficEnum
@@ -12,7 +11,7 @@ class ListenerParams:
     def __init__(
             self,
             prefix: str,
-            loadbalancer: ApplicationLoadbalancer,
+            loadbalancer: Any,
             port: int,
             inbound_traffic: AlbTrafficEnum = None,
             outbound_traffic: AlbTrafficEnum = None,
@@ -23,7 +22,8 @@ class ListenerParams:
         Constructor.
 
         :param prefix: String prefix for listener name.
-        :param loadbalancer: A loadbalancer for which the listener should be configured.
+        :param loadbalancer: A loadbalancer for which the listener should be configured. It is of type
+        ApplicationLoadbalancer. Type hint is not given to avoid python circular dependency.
         :param port: Port for listener to listen.
         :param inbound_traffic: Inbound traffic configuration (for security group).
         :param outbound_traffic: Outbound traffic configuration (for security group).

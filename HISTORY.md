@@ -1,5 +1,8 @@
 # Release history
 
+#### 4.0.1
+Bug fixes.
+
 #### 4.0.0
 Bug fixes and even prettier and more convenient code.
 

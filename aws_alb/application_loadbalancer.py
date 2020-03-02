@@ -30,6 +30,7 @@ class ApplicationLoadbalancer(CfnLoadBalancer):
         :param vpc: Virtual private cloud in which the security groups and a loadbalancer itself should be placed.
         :param loadbalancer_subnets: Subnets in which the loadbalancer can live.
         :param security_groups: Additional security groups for a loadbalancer.
+        :param certificate: Certificate to enable https traffic.
         """
         self.__loadbalancer_security_group = LoadBalancerSecurityGroup(
             scope=scope,

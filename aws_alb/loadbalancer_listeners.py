@@ -13,7 +13,6 @@ class LoadBalancerListeners:
     """
     A class which manages listeners for a loadbalancer.
     """
-
     def __init__(self, scope: core.Stack) -> None:
         """
         Constructor.
