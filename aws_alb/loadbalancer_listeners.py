@@ -1,11 +1,8 @@
 from typing import Tuple, Optional
-
 from aws_alb.alb_traffic_enum import AlbTrafficEnum
 from aws_cdk import core
 from aws_cdk.aws_certificatemanager import CfnCertificate
 from aws_cdk.aws_elasticloadbalancingv2 import CfnListener, CfnTargetGroup, CfnLoadBalancer
-
-from aws_alb.alb_type import AlbType
 from aws_alb.factories.listener_factory import ListenerFactory
 from aws_alb.factories.target_group_factory import TargetGroupFactory
 from aws_alb.listener_actions import ListenerActions
@@ -54,6 +51,7 @@ class LoadBalancerListeners:
         green = None
 
         kwargs = dict(
+            loadbalancer=loadbalancer,
             inbound_traffic=inbound_traffic,
             outbound_traffic=outbound_traffic,
             certificate=cert,
@@ -62,7 +60,6 @@ class LoadBalancerListeners:
         if cert:
             blue = self.create_listener(ListenerParams(
                 prefix + 'BlueHttps',
-                loadbalancer,
                 port=443,
                 action=ListenerActions.fixed_404_action(),
                 **kwargs
@@ -77,7 +74,6 @@ class LoadBalancerListeners:
 
         blue_http = self.create_listener(ListenerParams(
             prefix + 'BlueHttp',
-            loadbalancer,
             port=80,
             action=ListenerActions.redirect_action(blue.port) if cert else ListenerActions.fixed_404_action(),
             **kwargs
@@ -85,7 +81,6 @@ class LoadBalancerListeners:
 
         green_http = self.create_listener(ListenerParams(
             prefix + 'GreenHttp',
-            loadbalancer,
             port=8000,
             action=ListenerActions.redirect_action(green.port) if cert else ListenerActions.fixed_404_action(),
             **kwargs
