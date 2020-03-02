@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 from aws_cdk import core
 from aws_cdk.aws_certificatemanager import CfnCertificate
 from aws_cdk.aws_elasticloadbalancingv2 import CfnListener, CfnTargetGroup, CfnLoadBalancer
@@ -14,17 +14,12 @@ class LoadBalancerListeners:
     A class which manages listeners for a loadbalancer.
     """
 
-    def __init__(
-            self,
-            scope: core.Stack,
-    ) -> None:
+    def __init__(self, scope: core.Stack) -> None:
         """
         Constructor.
 
         :param scope: A CloudFormation stack in which the resources should be added.
         """
-        self.__scope = scope
-        self.__available_ports = list(range(20000, 30000))
         self.__listener_factory = ListenerFactory(scope)
         self.__target_group_factory = TargetGroupFactory(scope)
 
@@ -32,52 +27,59 @@ class LoadBalancerListeners:
             self,
             prefix: str,
             loadbalancer: CfnLoadBalancer,
-            certificate: CfnCertificate
+            cert: Optional[CfnCertificate] = None
     ) -> Tuple[CfnListener, CfnListener]:
         """
         Creates default listeners for normal loadbalancer use.
-        It creates two blue listeners that listen to 80 (http) and 443 (https) traffic.
-        It creates two green listeners that listen to 8000 (http) and 44300 (https) traffic.
-        Listener 80 redirects to 443 and listener 8000 redirects to 44300.
+        If certificate is provided, creates listeners for 80, 8000, 443, 44300 ports.
+        If certificate is not provided, creates listeners for 80, 8000 ports.
+
+        Listener 80 redirects to 443 and listener 8000 redirects to 44300 in case certificate is provided.
 
         :param prefix: A string prefix for resources.
-        :param loadbalancer:
-        :param certificate:
+        :param loadbalancer: Attach listeners to given loadbalancer.
+        :param cert: Certificate to enable https.
 
-        :return: Tuple with two tuples. First tuple contains a blue pair and the second group contains a green pair.
-        A pair contains two elements: a target group and a listener.
+        :return: Tuple of two listeners. First one is blue (production) and the second one is green (test).
         """
-        blue_https = self.create_listener(ListenerParams(
-            prefix + 'BlueHttps',
-            loadbalancer,
-            certificate=certificate,
-            port=443,
-            action=ListenerActions.fixed_404_action()
-        ))
+        blue = None
+        green = None
 
-        green_https = self.create_listener(ListenerParams(
-            prefix + 'GreenHttps',
-            loadbalancer,
-            certificate=certificate,
-            port=44300,
-            action=ListenerActions.fixed_404_action()
-        ))
+        if cert:
+            blue = self.create_listener(ListenerParams(
+                prefix + 'BlueHttps',
+                loadbalancer,
+                certificate=cert,
+                port=443,
+                action=ListenerActions.fixed_404_action()
+            ))
 
-        self.create_listener(ListenerParams(
+            green = self.create_listener(ListenerParams(
+                prefix + 'GreenHttps',
+                loadbalancer,
+                certificate=cert,
+                port=44300,
+                action=ListenerActions.fixed_404_action()
+            ))
+
+        blue_http = self.create_listener(ListenerParams(
             prefix + 'BlueHttp',
             loadbalancer,
             port=80,
-            action=ListenerActions.redirect_action(blue_https.port)
+            action=ListenerActions.redirect_action(blue.port) if cert else ListenerActions.fixed_404_action()
         ))
 
-        self.create_listener(ListenerParams(
+        green_http = self.create_listener(ListenerParams(
             prefix + 'GreenHttp',
             loadbalancer,
             port=8000,
-            action=ListenerActions.redirect_action(green_https.port)
+            action=ListenerActions.redirect_action(green.port) if cert else ListenerActions.fixed_404_action()
         ))
 
-        return blue_https, green_https
+        blue = blue or blue_http
+        green = green or green_http
+
+        return blue, green
 
     def create_blue_green(
             self,
@@ -97,10 +99,6 @@ class LoadBalancerListeners:
         :return: Tuple with two tuples. First tuple contains a blue pair and the second group contains a green pair.
         A pair contains two elements: a target group and a listener.
         """
-        # Ensure ports are defined.
-        blue_listener_params.port = blue_listener_params.port or self.__allocate_port()
-        green_listener_params.port = green_listener_params.port or self.__allocate_port()
-
         # Ensure prefixes tell which is green and which is blue.
         blue_target_group_params.prefix = blue_target_group_params.prefix + 'Blue'
         blue_listener_params.prefix = blue_listener_params.prefix + 'Blue'
@@ -127,14 +125,13 @@ class LoadBalancerListeners:
 
         :return: Listener instance.
         """
-        sg = listener_params.loadbalancer_sg
+        sg = listener_params.loadbalancer.security_group
 
-        if sg:
-            inbound = sg.get_peer(listener_params.inbound_traffic)
-            outbound = sg.get_peer(listener_params.outbound_traffic)
+        inbound = sg.get_peer(listener_params.inbound_traffic)
+        outbound = sg.get_peer(listener_params.outbound_traffic)
 
-            sg.open_port(listener_params.port, inbound, ingress=True)
-            sg.open_port(listener_params.port, outbound, ingress=False)
+        sg.open_port(listener_params.port, inbound, ingress=True)
+        sg.open_port(listener_params.port, outbound, ingress=False)
 
         return self.__listener_factory.create(listener_params)
 
@@ -147,11 +144,3 @@ class LoadBalancerListeners:
         :return: Target group instance.
         """
         return self.__target_group_factory.create_target_group(target_group_params)
-
-    def __allocate_port(self) -> int:
-        """
-        Allocates a free available port for a listener.
-
-        :return: Available port.
-        """
-        return self.__available_ports.pop(0)

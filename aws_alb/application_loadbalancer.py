@@ -1,12 +1,17 @@
 from typing import List, Optional
-from aws_cdk import core, aws_elasticloadbalancingv2, aws_ec2
 from aws_alb.loadbalancer_listeners import LoadBalancerListeners
+from aws_cdk import core, aws_ec2
+from aws_cdk.aws_certificatemanager import CfnCertificate
+from aws_cdk.aws_elasticloadbalancingv2 import CfnLoadBalancer, CfnListener
 from aws_alb.loadbalancer_sg import LoadBalancerSecurityGroup
 
 
-class ApplicationLoadbalancer:
+class ApplicationLoadbalancer(CfnLoadBalancer):
     """
     Manager class which creates a loadbalancer and its listeners and security groups and target groups.
+
+    More about loadbalancers:
+    https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html
     """
     def __init__(
             self,
@@ -15,6 +20,7 @@ class ApplicationLoadbalancer:
             vpc: aws_ec2.Vpc,
             loadbalancer_subnets: List[aws_ec2.Subnet],
             security_groups: Optional[List[aws_ec2.ISecurityGroup]] = None,
+            certificate: Optional[CfnCertificate] = None
     ) -> None:
         """
         Constructor.
@@ -34,7 +40,7 @@ class ApplicationLoadbalancer:
         security_groups = security_groups or []
         security_groups.append(self.__loadbalancer_security_group)
 
-        self.__loadbalancer = aws_elasticloadbalancingv2.CfnLoadBalancer(
+        super().__init__(
             scope,
             prefix + 'AppLoadBalancer',
             security_groups=[sg.security_group_id for sg in security_groups],
@@ -44,34 +50,20 @@ class ApplicationLoadbalancer:
             name=prefix + 'AppLoadBalancer'
         )
 
-        self.__loadbalancer_listeners = LoadBalancerListeners(
-            scope=scope,
-            prefix=prefix,
-            application_loadbalancer=self.__loadbalancer,
-            loadbalancer_security_group=self.__loadbalancer_security_group,
+        self.__listeners_manager = LoadBalancerListeners(scope)
+        self.__prod_listener, self.__test_listener = self.__listeners_manager.create_default_listeners(
+            prefix,
+            self,
+            certificate
         )
 
     @property
-    def loadbalancer(self) -> aws_elasticloadbalancingv2.CfnLoadBalancer:
-        """
-        Loadbalancer instance.
-        More about loadbalancer:
-        https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html
-
-        :return: Loadbalancer.
-        """
-        return self.__loadbalancer
+    def default_prod_listener(self) -> CfnListener:
+        return self.__prod_listener
 
     @property
-    def listeners(self) -> LoadBalancerListeners:
-        """
-        Listeners of the loadbalancer.
-        More about listeners:
-        https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-listeners.html
-
-        :return: Listeners.
-        """
-        return self.__loadbalancer_listeners
+    def default_test_listener(self) -> CfnListener:
+        return self.__test_listener
 
     @property
     def security_group(self) -> LoadBalancerSecurityGroup:

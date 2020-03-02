@@ -1,5 +1,8 @@
 # Release history
 
+#### 4.0.0
+Bug fixes and even prettier and more convenient code.
+
 #### 3.0.0
 Better blue-green integration. Support for default blue-green listeners.
 

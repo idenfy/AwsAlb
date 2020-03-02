@@ -96,13 +96,13 @@ vpc = Vpc(...)
 blue, green = loadbalancer.listeners.create_blue_green(
     blue_listener_params=ListenerParams(
         prefix='MyCool',
-        loadbalancer=loadbalancer.loadbalancer,
-        loadbalancer_sg=loadbalancer.security_group
+        loadbalancer=loadbalancer,
+        port=80
     ),
     green_listener_params=ListenerParams(
         prefix='MyCool',
         loadbalancer=loadbalancer.loadbalancer,
-        loadbalancer_sg=loadbalancer.security_group
+        port=8000
     ),
     blue_target_group_params=TargetGroupParams(
         prefix='MyCool',

@@ -1,8 +1,7 @@
 from typing import Optional
-
-from aws_alb.loadbalancer_sg import LoadBalancerSecurityGroup
+from aws_alb.application_loadbalancer import ApplicationLoadbalancer
 from aws_cdk.aws_certificatemanager import CfnCertificate
-from aws_cdk.aws_elasticloadbalancingv2 import CfnListener, CfnLoadBalancer
+from aws_cdk.aws_elasticloadbalancingv2 import CfnListener
 from aws_alb.alb_traffic_enum import AlbTrafficEnum
 
 
@@ -13,9 +12,8 @@ class ListenerParams:
     def __init__(
             self,
             prefix: str,
-            loadbalancer: CfnLoadBalancer,
-            loadbalancer_sg: Optional[LoadBalancerSecurityGroup] = None,
-            port: Optional[int] = None,
+            loadbalancer: ApplicationLoadbalancer,
+            port: int,
             inbound_traffic: AlbTrafficEnum = None,
             outbound_traffic: AlbTrafficEnum = None,
             certificate: Optional[CfnCertificate] = None,
@@ -26,7 +24,6 @@ class ListenerParams:
 
         :param prefix: String prefix for listener name.
         :param loadbalancer: A loadbalancer for which the listener should be configured.
-        :param loadbalancer_sg: A loadbalancer's security group.
         :param port: Port for listener to listen.
         :param inbound_traffic: Inbound traffic configuration (for security group).
         :param outbound_traffic: Outbound traffic configuration (for security group).
@@ -35,7 +32,6 @@ class ListenerParams:
         """
         self.prefix = prefix
         self.loadbalancer = loadbalancer
-        self.loadbalancer_sg = loadbalancer_sg
         self.port = port
         self.inbound_traffic = inbound_traffic or AlbTrafficEnum.INTERNET
         self.outbound_traffic = outbound_traffic or AlbTrafficEnum.NONE
