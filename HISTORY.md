@@ -1,5 +1,8 @@
 # Release history
 
+#### 3.0.0
+Better blue-green integration. Support for default blue-green listeners.
+
 #### 2.0.1
 Readme update.
 

@@ -58,8 +58,6 @@ instance in your stack. An example is given below:
 
 ```python
 from aws_cdk import core, aws_ec2
-from aws_alb.params.listener_params import ListenerParams
-from aws_alb.params.target_group_params import TargetGroupParams
 from aws_alb.application_loadbalancer import ApplicationLoadbalancer
 
 class MainStack(core.Stack):
@@ -82,20 +80,68 @@ class MainStack(core.Stack):
             loadbalancer_subnets=self.vpc.public_subnets,
             security_groups=None,
         )
-        
-        # Now lets create listeners and target groups for blue green deployments.
-        blue, green = self.public_http_loadbalancer.listeners.create_blue_green(
-            listener_params=ListenerParams(
-                prefix='MyCool',
-                loadbalancer=self.public_http_loadbalancer.loadbalancer,
-            ),
-            target_group_params=TargetGroupParams(
-                prefix='MyCool',
-                vpc=self.vpc,
-            )
-        )
-        
-        # If you need, you can access created target groups and listeners.
-        blue_target_group, blue_listener = blue
-        green_target_group, green_listener = green
+```
+
+To create listeners and target groups that are blue-green deployments ready:
+
+```python
+from aws_alb.params.listener_params import ListenerParams
+from aws_alb.params.target_group_params import TargetGroupParams
+from aws_alb.application_loadbalancer import ApplicationLoadbalancer
+from aws_cdk.aws_ec2 import Vpc
+
+loadbalancer = ApplicationLoadbalancer(...)
+vpc = Vpc(...)
+
+blue, green = loadbalancer.listeners.create_blue_green(
+    blue_listener_params=ListenerParams(
+        prefix='MyCool',
+        loadbalancer=loadbalancer.loadbalancer,
+        loadbalancer_sg=loadbalancer.security_group
+    ),
+    green_listener_params=ListenerParams(
+        prefix='MyCool',
+        loadbalancer=loadbalancer.loadbalancer,
+        loadbalancer_sg=loadbalancer.security_group
+    ),
+    blue_target_group_params=TargetGroupParams(
+        prefix='MyCool',
+        vpc=vpc,
+    ),
+    green_target_group_params=TargetGroupParams(
+        prefix='MyCool',
+        vpc=vpc,
+    )
+)
+
+# If you need, you can access created target groups and listeners.
+blue_target_group, blue_listener = blue
+green_target_group, green_listener = green
+
+# To see to which ports listeners are listening to:
+print(blue_listener.port)
+print(green_listener.port)
+```
+
+Usually, it is the best practice to have one loadbalancer with two (http
+and https) listeners and have listener rules to route traffic. To create
+default listeners:
+
+```python
+from aws_alb.application_loadbalancer import ApplicationLoadbalancer
+from aws_cdk.aws_certificatemanager import CfnCertificate
+from aws_cdk.aws_ec2 import Vpc
+
+loadbalancer = ApplicationLoadbalancer(...)
+vpc = Vpc(...)
+cert = CfnCertificate(...)
+
+blue, green = loadbalancer.listeners.create_default_listeners(
+    prefix='MyCool',
+    loadbalancer=loadbalancer.loadbalancer,
+    certificate=cert
+)
+
+print(blue.port) # Should be 443.
+print(green.port) # Should be 44300.
 ```

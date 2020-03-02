@@ -24,6 +24,9 @@ class ListenerFactory:
 
         :return: Listener instance.
         """
+        assert listener_params.loadbalancer is not None, 'Loadbalancer must be specified.'
+        assert listener_params.port is not None, 'Port must be specified.'
+
         protocol = 'HTTPS' if listener_params.certificate else 'HTTP'
 
         listener = CfnListener(
