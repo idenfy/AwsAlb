@@ -1,7 +1,11 @@
 from typing import Tuple, Optional
+
+from aws_alb.alb_traffic_enum import AlbTrafficEnum
 from aws_cdk import core
 from aws_cdk.aws_certificatemanager import CfnCertificate
 from aws_cdk.aws_elasticloadbalancingv2 import CfnListener, CfnTargetGroup, CfnLoadBalancer
+
+from aws_alb.alb_type import AlbType
 from aws_alb.factories.listener_factory import ListenerFactory
 from aws_alb.factories.target_group_factory import TargetGroupFactory
 from aws_alb.listener_actions import ListenerActions
@@ -13,6 +17,7 @@ class LoadBalancerListeners:
     """
     A class which manages listeners for a loadbalancer.
     """
+
     def __init__(self, scope: core.Stack) -> None:
         """
         Constructor.
@@ -26,7 +31,9 @@ class LoadBalancerListeners:
             self,
             prefix: str,
             loadbalancer: CfnLoadBalancer,
-            cert: Optional[CfnCertificate] = None
+            cert: Optional[CfnCertificate] = None,
+            inbound_traffic: AlbTrafficEnum = None,
+            outbound_traffic: AlbTrafficEnum = None,
     ) -> Tuple[CfnListener, CfnListener]:
         """
         Creates default listeners for normal loadbalancer use.
@@ -38,41 +45,50 @@ class LoadBalancerListeners:
         :param prefix: A string prefix for resources.
         :param loadbalancer: Attach listeners to given loadbalancer.
         :param cert: Certificate to enable https.
+        :param inbound_traffic: Inbound traffic configuration (for security group).
+        :param outbound_traffic: Outbound traffic configuration (for security group).
 
         :return: Tuple of two listeners. First one is blue (production) and the second one is green (test).
         """
         blue = None
         green = None
 
+        kwargs = dict(
+            inbound_traffic=inbound_traffic,
+            outbound_traffic=outbound_traffic,
+            certificate=cert,
+        )
+
         if cert:
             blue = self.create_listener(ListenerParams(
                 prefix + 'BlueHttps',
                 loadbalancer,
-                certificate=cert,
                 port=443,
-                action=ListenerActions.fixed_404_action()
+                action=ListenerActions.fixed_404_action(),
+                **kwargs
             ))
 
             green = self.create_listener(ListenerParams(
                 prefix + 'GreenHttps',
-                loadbalancer,
-                certificate=cert,
                 port=44300,
-                action=ListenerActions.fixed_404_action()
+                action=ListenerActions.fixed_404_action(),
+                **kwargs
             ))
 
         blue_http = self.create_listener(ListenerParams(
             prefix + 'BlueHttp',
             loadbalancer,
             port=80,
-            action=ListenerActions.redirect_action(blue.port) if cert else ListenerActions.fixed_404_action()
+            action=ListenerActions.redirect_action(blue.port) if cert else ListenerActions.fixed_404_action(),
+            **kwargs
         ))
 
         green_http = self.create_listener(ListenerParams(
             prefix + 'GreenHttp',
             loadbalancer,
             port=8000,
-            action=ListenerActions.redirect_action(green.port) if cert else ListenerActions.fixed_404_action()
+            action=ListenerActions.redirect_action(green.port) if cert else ListenerActions.fixed_404_action(),
+            **kwargs
         ))
 
         blue = blue or blue_http

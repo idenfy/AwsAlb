@@ -1,5 +1,8 @@
 # Release history
 
+#### 4.1.0
+Add ability to specify inbound and outbound traffic.
+
 #### 4.0.1
 Bug fixes.
 

@@ -1,4 +1,8 @@
 from typing import List, Optional
+
+from aws_alb.alb_traffic_enum import AlbTrafficEnum
+
+from aws_alb.alb_type import AlbType
 from aws_alb.loadbalancer_listeners import LoadBalancerListeners
 from aws_cdk import core, aws_ec2
 from aws_cdk.aws_certificatemanager import CfnCertificate
@@ -20,7 +24,8 @@ class ApplicationLoadbalancer(CfnLoadBalancer):
             vpc: aws_ec2.Vpc,
             loadbalancer_subnets: List[aws_ec2.Subnet],
             security_groups: Optional[List[aws_ec2.ISecurityGroup]] = None,
-            certificate: Optional[CfnCertificate] = None
+            certificate: Optional[CfnCertificate] = None,
+            alb_type: AlbType = AlbType.PUBLIC
     ) -> None:
         """
         Constructor.
@@ -41,13 +46,23 @@ class ApplicationLoadbalancer(CfnLoadBalancer):
         security_groups = security_groups or []
         security_groups.append(self.__loadbalancer_security_group)
 
+        if alb_type == AlbType.PUBLIC:
+            scheme = 'internet-facing'
+            inbound = AlbTrafficEnum.INTERNET
+        elif alb_type == AlbType.INTERNAL:
+            scheme = 'internal'
+            inbound = AlbTrafficEnum.VPC
+        else:
+            scheme = 'internet-facing'
+            inbound = AlbTrafficEnum.INTERNET
+
         super().__init__(
             scope,
             prefix + 'AppLoadBalancer',
             security_groups=[sg.security_group_id for sg in security_groups],
             subnets=[subnet.subnet_id for subnet in loadbalancer_subnets],
             type='application',
-            scheme='internet-facing',
+            scheme=scheme,
             name=prefix + 'AppLoadBalancer'
         )
 
@@ -55,7 +70,9 @@ class ApplicationLoadbalancer(CfnLoadBalancer):
         self.__prod_listener, self.__test_listener = self.__listeners_manager.create_default_listeners(
             prefix,
             self,
-            certificate
+            certificate,
+            inbound_traffic=inbound,
+            outbound_traffic=AlbTrafficEnum.VPC
         )
 
     @property
