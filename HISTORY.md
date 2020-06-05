@@ -1,5 +1,8 @@
 # Release history
 
+#### 4.2.0
+Force CDK version update to 1.44.0.
+
 #### 4.1.1
 Bug fixes.
 
